@@ -60,7 +60,7 @@ const Producto = () => {
         }
     }, [id, producto]);
 
-    if (Object.keys(producto).length === 0) return 'Cargando...';
+    if (Object.keys(producto).length === 0 && !error) return 'Cargando...';
 
     const { comentarios, creado, descripcion, empresa, nombre, url, urlImagen, votos, creador, haVotado } = producto;
 
@@ -133,92 +133,123 @@ const Producto = () => {
         })
     }
 
+    // Función que revisa que el creador del producto sea el mismo que esta autenticado
+    const puedeBorrar = () => {
+        if (!usuario) return false;
+
+        return (usuario.uid === creador.id);
+    }
+
+    // Elimina un producto de la DB
+    const eliminarProducto = async () => {
+        if (!usuario) return router.push('/login');
+        if (creador.id !== usuario.uid) return router.push('/');
+
+        try {
+            await firebase.db.collection('productos').doc(id).delete();
+            router.push('/');
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
     return (
         <Layout>
-            {error && <Error404 />}
-
-            <div className="contenedor">
-                <h1 css={css`
+            {error ? <Error404 /> : (
+                <>
+                    <div className="contenedor">
+                        <h1 css={css`
                     text-align: center;
                     margin-top: 5rem;
                 `}>{nombre}</h1>
 
-                <ContenedorProducto>
-                    <div>
-                        <p>Publicado hace {formatDistanceToNow(new Date(creado), { locale: es })}</p>
-                        <p>Por: {creador.nombre} de {empresa}</p>
+                        <ContenedorProducto>
+                            <div>
+                                <p>Publicado hace {formatDistanceToNow(new Date(creado), { locale: es })}</p>
+                                <p>Por: {creador.nombre} de {empresa}</p>
 
-                        <img src={urlImagen} />
-                        <p>{descripcion}</p>
+                                <img src={urlImagen} />
+                                <p>{descripcion}</p>
 
-                        {usuario && (
-                            <>
-                                <h2>Agrega tu comentario</h2>
+                                {usuario && (
+                                    <>
+                                        <h2>Agrega tu comentario</h2>
 
-                                <form
-                                    onSubmit={agregarComentario}
-                                >
-                                    <Campo>
-                                        <input
-                                            type="text"
-                                            name="mensaje"
-                                            onChange={comentarioChange}
-                                        />
-                                    </Campo>
+                                        <form
+                                            onSubmit={agregarComentario}
+                                        >
+                                            <Campo>
+                                                <input
+                                                    type="text"
+                                                    name="mensaje"
+                                                    onChange={comentarioChange}
+                                                />
+                                            </Campo>
 
-                                    <InputSubmit
-                                        type="submit"
-                                        value="Agregar Comentario"
-                                    />
-                                </form>
-                            </>
-                        )}
+                                            <InputSubmit
+                                                type="submit"
+                                                value="Agregar Comentario"
+                                            />
+                                        </form>
+                                    </>
+                                )}
 
-                        <h2 css={css`
+                                <h2 css={css`
                                 margin: 2rem 0; 
                             `}
-                        >Comentarios</h2>
+                                >Comentarios</h2>
 
-                        {comentarios.length === 0 ? "Aún no hay comentarios" : (
-                            <ul>
-                                {comentarios.map((comentario, i) => (
-                                    <li
-                                        key={`${comentario.usuarioId}-${i}`}
-                                        css={css`
+                                {comentarios.length === 0 ? "Aún no hay comentarios" : (
+                                    <ul>
+                                        {comentarios.map((comentario, i) => (
+                                            <li
+                                                key={`${comentario.usuarioId}-${i}`}
+                                                css={css`
                                             border: 1px solid #e1e1e1;
                                             padding: 2rem;
                                         `}
-                                    >
-                                        <p>{comentario.mensaje}</p>
-                                        <p>Escrito por: <span css={css`
+                                            >
+                                                <p>{comentario.mensaje}</p>
+                                                <p>Escrito por: <span css={css`
                                             font-weight: bold;
                                         `}>{comentario.usuarioNombre}</span></p>
-                                        { esCreador(comentario.usuarioId) && ( <CreadorProducto>Es Creador</CreadorProducto>  ) }
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
+                                                {esCreador(comentario.usuarioId) && (<CreadorProducto>Es Creador</CreadorProducto>)}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
 
-                    <aside>
-                        <Boton
-                            target="_blank"
-                            bgColor="true"
-                            href={url}
-                        >Visitar URL</Boton>
+                            <aside>
+                                <Boton
+                                    target="_blank"
+                                    bgColor="true"
+                                    href={url}
+                                >Visitar URL</Boton>
 
-                        <p css={css`
+                                <p css={css`
                             text-align: center;
                             margin-top: 5rem;
                         `}>{votos} Votos</p>
-                        {usuario && (
+                                {usuario && (
+                                    <Boton
+                                        onClick={votarProducto}
+                                    >Votar</Boton>
+                                )}
+                            </aside>
+                        </ContenedorProducto>
+
+                        { puedeBorrar() && (
                             <Boton
-                                onClick={votarProducto}
-                            >Votar</Boton>
+                                onClick={eliminarProducto}
+                            >Eliminar Producto</Boton>
                         )}
-                    </aside>
-                </ContenedorProducto>
-            </div>
+                    </div>
+                </>
+
+            )}
+
+
 
 
         </Layout>
